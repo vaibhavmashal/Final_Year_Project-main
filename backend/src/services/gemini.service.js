@@ -1,0 +1,191 @@
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const SKILL_DICTIONARY = [
+  "java",
+  "python",
+  "javascript",
+  "typescript",
+  "react",
+  "node",
+  "express",
+  "mongodb",
+  "sql",
+  "mysql",
+  "postgresql",
+  "dsa",
+  "algorithms",
+  "system design",
+  "aws",
+  "azure",
+  "cloud",
+  "api",
+  "git",
+  "c",
+  "c++",
+  "problem solving",
+  "communication",
+  "oops",
+  "aptitude",
+  "teamwork"
+];
+
+function getGeminiModel() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    return genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash"
+    });
+  } catch {
+    return null;
+  }
+}
+
+function extractJson(text) {
+  const cleaned = text.replace(/```json|```/gi, "").trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+  }
+
+  return null;
+}
+
+function extractSkillsFallback(resumeText = "") {
+  const lower = resumeText.toLowerCase();
+  return SKILL_DICTIONARY.filter((skill) => lower.includes(skill));
+}
+
+function getFriendlyGeminiErrorMessage(error, context) {
+  const message = String(error?.message || "").toLowerCase();
+
+  if (message.includes("429") || message.includes("quota") || message.includes("rate")) {
+    return context === "skills"
+      ? "Gemini quota limit reached. Using local skill extraction for now."
+      : "Gemini quota limit reached. Recommendations are based on local matching for now.";
+  }
+
+  if (message.includes("404") || message.includes("not found") || message.includes("model")) {
+    return context === "skills"
+      ? "Gemini model configuration is invalid. Using local skill extraction."
+      : "Gemini model configuration is invalid. Using local recommendation matching.";
+  }
+
+  if (message.includes("api key") || message.includes("permission") || message.includes("unauthorized")) {
+    return context === "skills"
+      ? "Gemini authentication failed. Using local skill extraction."
+      : "Gemini authentication failed. Using local recommendation matching.";
+  }
+
+  return context === "skills"
+    ? "Gemini is temporarily unavailable. Using local skill extraction."
+    : "Gemini is temporarily unavailable. Using local recommendation matching.";
+}
+
+async function extractSkillsWithGemini(resumeText) {
+  const model = getGeminiModel();
+
+  if (!model) {
+    return {
+      skills: extractSkillsFallback(resumeText),
+      summary: "Gemini API key not configured. Using local fallback extraction.",
+      source: "fallback"
+    };
+  }
+
+  const prompt = [
+    "Extract technical and soft skills from this resume text.",
+    "Return only JSON in this format:",
+    '{"skills":["..."],"summary":"..."}',
+    "Keep skills short and normalized (lowercase where possible).",
+    "Resume text:",
+    resumeText
+  ].join("\n");
+
+  try {
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text();
+    const parsed = extractJson(raw);
+
+    if (!parsed || !Array.isArray(parsed.skills)) {
+      return {
+        skills: extractSkillsFallback(resumeText),
+        summary: "Gemini output was not valid JSON. Using local fallback extraction.",
+        source: "fallback"
+      };
+    }
+
+    return {
+      skills: [...new Set(parsed.skills.map((skill) => String(skill).toLowerCase().trim()))],
+      summary: parsed.summary || "Skills extracted by Gemini.",
+      source: "gemini"
+    };
+  } catch (error) {
+    console.error("Gemini skill extraction failed:", error.message);
+    return {
+      skills: extractSkillsFallback(resumeText),
+      summary: getFriendlyGeminiErrorMessage(error, "skills"),
+      source: "fallback"
+    };
+  }
+}
+
+async function refineRecommendationsWithGemini(skills, topRecommendations) {
+  const model = getGeminiModel();
+
+  if (!model) {
+    return {
+      narrative:
+        "Gemini API key not configured. Recommendations are based on local skill matching and college hiring strength.",
+      source: "fallback"
+    };
+  }
+
+  const prompt = [
+    "You are a placement recommendation assistant.",
+    "Given student skills and top matched companies, provide concise reasoning.",
+    "Return only JSON in this format:",
+    '{"narrative":"...","recommendations":[{"company":"...","why":"...","nextSteps":["..."]}] }',
+    `Student skills: ${JSON.stringify(skills)}`,
+    `Top matches: ${JSON.stringify(topRecommendations)}`
+  ].join("\n");
+
+  try {
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text();
+    const parsed = extractJson(raw);
+
+    if (!parsed) {
+      return {
+        narrative: "Gemini response could not be parsed. Using local recommendation details.",
+        source: "fallback"
+      };
+    }
+
+    return {
+      narrative: parsed.narrative || "Recommendations generated by Gemini.",
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      source: "gemini"
+    };
+  } catch (error) {
+    console.error("Gemini recommendation refinement failed:", error.message);
+    return {
+      narrative: getFriendlyGeminiErrorMessage(error, "recommendations"),
+      source: "fallback"
+    };
+  }
+}
+
+module.exports = {
+  extractSkillsWithGemini,
+  refineRecommendationsWithGemini
+};

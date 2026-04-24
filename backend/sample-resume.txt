@@ -1,0 +1,2 @@
+John Doe
+Skills: Java, Python, SQL, React, Node, AWS, DSA, problem solving, communication
