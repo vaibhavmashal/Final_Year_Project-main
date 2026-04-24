@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Homepage from "./pages/index";
 import Student from "./pages/Student";
 import Alumni from "./pages/Alumni";
+import MeetingNotify from "./pages/MeetingNotify";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/student" element={<Student />} />
         <Route path="/alumni" element={<Alumni />} />
+        <Route path="/alumni/meeting-notify" element={<MeetingNotify />} />
       </Routes>
     </BrowserRouter>
   );

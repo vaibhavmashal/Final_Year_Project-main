@@ -18,6 +18,10 @@ export default function AlumniSidebar({ setActive }) {
           <FaUserGraduate /> Student Requests
         </li>
 
+        <li onClick={() => setActive("meeting-notify")} className="flex items-center gap-3 cursor-pointer hover:text-yellow-300">
+          <FaUserGraduate /> Meeting Notify
+        </li>
+
         <li className="flex items-center gap-3 cursor-pointer hover:text-yellow-300">
           <FaSignOutAlt /> Logout
         </li>

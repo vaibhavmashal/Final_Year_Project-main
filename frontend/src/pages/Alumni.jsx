@@ -4,6 +4,7 @@ import ShareExperience from "./ShareExperience";
 import ExperienceList from "../components/ExperienceList";
 import StudentDashboard from "./Student";
 import StudentRequests from "./StudentRequests";
+import MeetingNotificationForm from "../components/MeetingNotificationForm";
 import axios from "axios";
 
 export default function Alumni() {
@@ -64,6 +65,10 @@ export default function Alumni() {
       {/* ✅ THIS IS THE FIX */}
       {active === "requests" && (
         <StudentRequests/>
+      )}
+
+      {active === "meeting-notify" && (
+        <MeetingNotificationForm />
       )}
 
     </div>

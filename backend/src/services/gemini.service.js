@@ -30,7 +30,7 @@ const SKILL_DICTIONARY = [
 ];
 
 function getGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
   if (!apiKey) {
     return null;
   }
