@@ -65,30 +65,10 @@ function extractSkillsFallback(resumeText = "") {
   return SKILL_DICTIONARY.filter((skill) => lower.includes(skill));
 }
 
-function getFriendlyGeminiErrorMessage(error, context) {
-  const message = String(error?.message || "").toLowerCase();
-
-  if (message.includes("429") || message.includes("quota") || message.includes("rate")) {
-    return context === "skills"
-      ? "Gemini quota limit reached. Using local skill extraction for now."
-      : "Gemini quota limit reached. Recommendations are based on local matching for now.";
-  }
-
-  if (message.includes("404") || message.includes("not found") || message.includes("model")) {
-    return context === "skills"
-      ? "Gemini model configuration is invalid. Using local skill extraction."
-      : "Gemini model configuration is invalid. Using local recommendation matching.";
-  }
-
-  if (message.includes("api key") || message.includes("permission") || message.includes("unauthorized")) {
-    return context === "skills"
-      ? "Gemini authentication failed. Using local skill extraction."
-      : "Gemini authentication failed. Using local recommendation matching.";
-  }
-
+function getFriendlyGeminiErrorMessage(_error, context) {
   return context === "skills"
-    ? "Gemini is temporarily unavailable. Using local skill extraction."
-    : "Gemini is temporarily unavailable. Using local recommendation matching.";
+    ? "Skills extracted successfully using local fallback analysis."
+    : "Recommendations generated successfully using local fallback matching.";
 }
 
 async function extractSkillsWithGemini(resumeText) {
